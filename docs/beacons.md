@@ -31,6 +31,11 @@ The key idea is to keep **routers stateless and lightweight**, while Beacons per
      * Other Beacons watching the same chain.
      * Beacons on the destination chain.
      * The VX Ledger for final confirmation.
+   * They also **sign mint/burn transactions using the group’s multi-sig treasury key** to ensure no single Beacon can execute unilaterally.
+
+4. **Periodic heartbeats:**
+
+   * Beacons should also send “I’m alive” signed heartbeats and metrics to the VX Ledger so it can prune stale members and maintain quorum integrity.
 
 ---
 
@@ -55,12 +60,14 @@ A cross-chain transfer requires a full handshake between:
 2. The **destination chain Beacon group**.
 3. The **VX Ledger** (final state authority).
 
+> **Note:** Beacons on both chains should only move forward once the origin deposit has passed sufficient block confirmations (e.g., 15+ confirmations on ETH mainnet) to avoid reorg risk.
+
 ### **Steps**
 
 1. **Origin chain detects deposit:**
 
    * Beacons watching Chain A detect a user deposit to the multi-sig treasury.
-   * Beacon group confirms the deposit is finalized (sufficient block confirmations).
+   * Beacon group confirms the deposit is finalized after N block confirmations.
    * Group reaches quorum and signs a message:
 
      ```
@@ -74,7 +81,7 @@ A cross-chain transfer requires a full handshake between:
 
 3. **Destination chain mints/sends:**
 
-   * Once verified, the Chain B Beacon group mints VX-wrapped tokens (or sends assets) to the user’s destination address.
+   * Once verified, the Chain B Beacon group mints VX-wrapped tokens (or sends assets) to the user’s destination address **using the group’s multi-sig treasury key**.
    * Chain B group waits for confirmation that this transaction was included on-chain.
 
 4. **Final confirmation:**
@@ -131,6 +138,20 @@ VX Ledger finalizers aggregate pushes from multiple Beacons. Ledger updates only
 2. **Quorum Configuration:** The “max 8–9 Beacons per chain” assumption is to keep quorum manageable while maintaining security.
 3. **Failure Handling:** If one or more Beacons in a group go offline, as long as quorum remains, operations continue.
 4. **Metrics Collection:** Beacons can also push gas price data, block times, and congestion scores for use in the VX randomizer and fee logic.
+5. **Beacon Heartbeats:** Beacons should periodically send “I’m alive” signed heartbeats so VX Ledger can prune stale members and maintain quorum integrity.
+
+---
+
+## **Auditability**
+
+Any node should be able to independently verify the entire handshake trail:
+
+1. Recompute the **handshake\_id** from the origin deposit event.
+2. Check all Beacon signatures on the origin and destination attestations meet quorum.
+3. Verify the destination chain’s contract shows `used[handshake_id] = true`.
+4. Compare the VX Ledger COMMIT snapshot to ensure it matches the final debits and credits.
+
+This makes the VX system fully auditable and resistant to tampering, even without trusting the VX Ledger directly.
 
 ---
 
@@ -141,8 +162,10 @@ VX Ledger finalizers aggregate pushes from multiple Beacons. Ledger updates only
 3. Do we allow corporate operators (e.g., Circle) to run their own Beacons with direct treasury authority?
 4. Should Beacons also provide periodic "heartbeats" to ensure ledger has fresh chain data even without user transfers?
 
+
 ---
-# additional needs: **hard idempotency** across the whole flow so the same transfer can’t be executed (or even *prepared*) twice. 
+
+# Additional needs: **hard idempotency** across the whole flow so the same transfer can’t be executed (or even *prepared*) twice. 
 
 ---
 
