@@ -1,6 +1,3 @@
-Here’s a **deep, polished README.md** for your VX Protocol repo. It’s structured so that even if the codebase is early, it will look professional and clearly communicate the vision.
-
----
 
 # **VX Protocol** – Value Transport Layer
 
